@@ -1,0 +1,502 @@
+<title>Workout Logger History</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F4F1; --ink:#16181B; --ink-2:#4A4F57; --muted:#7A7F87;
+  --line:#DCDFD9; --line-2:#E8EAE5; --hover:#EDEBE3; --surface:#F3F4F1;
+  --gold:#9A6F08; --gold-ink:#7A5806; --gold-soft:#EFE3C2;
+  --l0:#B8860B; --l1:#2a78d6; --l2:#eb6834; --l3:#4a3aa7; --l4:#1baf7a;
+  --h0:#E2E5DF; --h1:#F0DDA8; --h2:#E0BC5C; --h3:#C39222; --h4:#86640D;
+  --add:#2F7A4A; --del:#B1413A; --bar:#C39222;
+  --sans:"Archivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111316; --ink:#ECEAE4; --ink-2:#BDBFC2; --muted:#8B8F95;
+    --line:#2A2E34; --line-2:#1F2226; --hover:#1C1A15; --surface:#111316;
+    --gold:#E2B74D; --gold-ink:#E9C261; --gold-soft:#2F2716;
+    --l0:#B38A26; --l1:#3987e5; --l2:#d95926; --l3:#9085e9; --l4:#199e70;
+    --h0:#1F2328; --h1:#4A3E1E; --h2:#7E6526; --h3:#B8912F; --h4:#EFC75A;
+    --add:#63BD85; --del:#E47C72; --bar:#C99C33;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111316; --ink:#ECEAE4; --ink-2:#BDBFC2; --muted:#8B8F95;
+  --line:#2A2E34; --line-2:#1F2226; --hover:#1C1A15; --surface:#111316;
+  --gold:#E2B74D; --gold-ink:#E9C261; --gold-soft:#2F2716;
+  --l0:#B38A26; --l1:#3987e5; --l2:#d95926; --l3:#9085e9; --l4:#199e70;
+  --h0:#1F2328; --h1:#4A3E1E; --h2:#7E6526; --h3:#B8912F; --h4:#EFC75A;
+  --add:#63BD85; --del:#E47C72; --bar:#C99C33;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding-inline:24px;padding-block:64px 96px;display:flex;flex-direction:column;gap:80px}
+@media (max-width:600px){.wrap{padding-inline:20px;padding-block:40px 72px;gap:64px}}
+.mono{font-family:var(--mono);font-size:12.5px}
+h1,h2{margin:0;text-wrap:balance}
+p{margin:0}
+
+/* Header */
+header{display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:clamp(40px,9vw,60px);line-height:.95;font-weight:800;font-variation-settings:"wdth" 125;letter-spacing:-.02em}
+h1 span{color:var(--gold)}
+.lede{color:var(--ink-2);font-size:16px;max-width:46ch}
+.lede b{color:var(--ink);font-weight:600}
+.pill{font-family:var(--mono);font-size:12.5px;background:var(--gold-soft);color:var(--gold-ink);padding:1px 7px;border-radius:6px;white-space:nowrap}
+
+/* Big numbers */
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:28px 16px}
+.n{display:flex;flex-direction:column;gap:2px}
+.n .v{font-size:40px;font-weight:700;font-variation-settings:"wdth" 112;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.n .v small{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:2px}
+.n .k{font-size:13px;color:var(--muted)}
+.n.wide{grid-column:span 2}
+.n .v.a{color:var(--add)} .n .v.d{color:var(--del)}
+@media (max-width:600px){.nums{grid-template-columns:1fr 1fr}.n .v{font-size:36px}.n.wide{grid-column:span 1}.n.wide .v{font-size:30px;font-variation-settings:"wdth" 100}}
+
+/* Sections */
+section{display:flex;flex-direction:column;gap:24px}
+.sh{display:flex;flex-direction:column;gap:6px}
+h2{font-size:22px;font-weight:750;font-variation-settings:"wdth" 118;letter-spacing:-.01em}
+.sh p{color:var(--muted);font-size:14px}
+
+/* Heatmap */
+.heat{display:flex;flex-direction:column;gap:8px}
+.heat-months{position:relative;height:16px;font-size:11.5px;color:var(--muted)}
+.heat-months span{position:absolute;top:0;white-space:nowrap}
+.heat-cells{display:grid;grid-template-rows:repeat(7,auto);grid-auto-flow:column;gap:3px}
+.cell{aspect-ratio:1;border-radius:22%;background:var(--h0);max-width:100%}
+.cell[data-l="1"]{background:var(--h1)} .cell[data-l="2"]{background:var(--h2)}
+.cell[data-l="3"]{background:var(--h3)} .cell[data-l="4"]{background:var(--h4)}
+.cell.out{background:transparent}
+.cell[data-d]:hover{outline:2px solid var(--ink);outline-offset:1px}
+@media (max-width:600px){.heat-cells{gap:2px}}
+.legend{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);align-self:flex-end}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* Facts */
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;margin:0}
+.facts div{display:flex;flex-direction:column;gap:1px}
+.facts dt{font-size:13px;color:var(--muted)}
+.facts dd{margin:0;font-size:16px;font-weight:600}
+.facts dd span{font-weight:400;color:var(--muted);font-size:14px}
+
+/* Disclosure */
+details.more{border-top:1px solid var(--line)}
+details.more > summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:16px 0;font-size:14.5px;font-weight:600;color:var(--ink)}
+details.more > summary::-webkit-details-marker{display:none}
+details.more > summary::after{content:"";width:8px;height:8px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+details.more[open] > summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+details.more > summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+details.more > summary .c{font-weight:400;color:var(--muted);margin-left:6px}
+.inner{display:flex;flex-direction:column;gap:36px;padding:4px 0 20px}
+
+/* Charts */
+.chart{display:flex;flex-direction:column;gap:4px;min-width:0}
+.chart h3{margin:0;font-size:14.5px;font-weight:650}
+.chart .sub{font-size:13px;color:var(--muted)}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart svg text{fill:var(--muted);font-family:var(--sans);font-size:11px}
+.chart .grid line{stroke:var(--line-2)}
+.chart .base{stroke:var(--line)}
+.chart .bar{fill:var(--bar)}
+.chart .bar.peak{fill:var(--gold)}
+.chart .hit{fill:transparent}
+.chart g.col:hover .bar{fill:var(--gold-ink)}
+
+/* Branches */
+.blist{display:flex;flex-direction:column}
+.brow{display:flex;align-items:center;gap:12px;padding:14px 0;border:0;border-top:1px solid var(--line-2);background:none;color:inherit;font:inherit;text-align:left;width:100%;cursor:pointer}
+.blist > .brow:first-child{border-top:0}
+.brow:hover .bn{color:var(--gold-ink)}
+.brow:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+.brow .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.brow .bn{font-family:var(--mono);font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.brow .bs{font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
+.brow .bs b{font-weight:600;color:var(--gold-ink)}
+.brow[aria-pressed="true"] .bn{color:var(--gold-ink);font-weight:500}
+.brow[aria-pressed="true"] .dot{box-shadow:0 0 0 3px var(--gold-soft)}
+.blist.merged .brow{padding:11px 0}
+.blist.merged .brow .bn{font-size:13px;color:var(--ink-2)}
+
+/* Commits */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.search{flex:1 1 240px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);height:40px}
+.search:focus-within{border-color:var(--gold)}
+.search svg{flex:none;color:var(--muted)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:15px}
+.finfo{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px}
+.btn{font:inherit;font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-2)}
+.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn.link{border:0;padding:6px 2px;color:var(--gold-ink)}
+.graph-wrap{position:relative}
+.graph{position:relative;overflow:hidden;transition:height .35s ease}
+.graph.collapsed{-webkit-mask-image:linear-gradient(to bottom,#000 70%,transparent);mask-image:linear-gradient(to bottom,#000 70%,transparent)}
+.graph svg.lanes{position:absolute;left:0;top:0;pointer-events:none;z-index:1}
+.lanes path{fill:none;stroke-width:2;stroke-linecap:round;transition:opacity .2s}
+.lanes .node{transition:opacity .2s}
+.graph.filtering .lanes path{opacity:.25}
+.lanes .dim{opacity:.15}
+.mrow{height:48px;display:flex;align-items:flex-end;padding-bottom:10px;gap:10px}
+.mrow b{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.mrow span{font-size:12.5px;color:var(--muted)}
+.crow{height:36px;display:grid;grid-template-columns:62px minmax(0,1fr) auto auto;align-items:center;gap:14px;white-space:nowrap;border-radius:6px;transition:opacity .2s}
+.crow:hover{background:var(--hover)}
+.crow.dim{opacity:.25}
+.crow .h{color:var(--muted)}
+.crow .msg{display:flex;align-items:center;gap:8px;min-width:0}
+.crow .msg .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.crow.merge .t{color:var(--muted);font-style:italic}
+.crow .when{font-size:12.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.crow .when .tm{margin-left:6px}
+.crow .diff{font-family:var(--mono);font-size:11.5px;text-align:right;min-width:88px;padding-right:6px}
+.diff .a{color:var(--add)} .diff .d{color:var(--del)}
+.ref{display:inline-flex;align-items:center;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:5px;border:1px solid var(--line);color:var(--ink-2);flex:none}
+.ref.head{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (max-width:600px){
+  .crow{grid-template-columns:minmax(0,1fr) auto;gap:10px}
+  .crow .h,.crow .diff,.crow .when .tm,.crow .ref{display:none}
+  .crow .when.same{visibility:hidden}
+}
+.more-btn{align-self:flex-start}
+.note{font-size:13px;color:var(--muted)}
+
+.tip{position:fixed;z-index:10;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.4;padding:7px 10px;border-radius:8px;max-width:240px;transform:translate(-50%,calc(-100% - 10px))}
+footer{font-size:12.5px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Git history</div>
+    <h1>Workout <span>Logger</span></h1>
+    <p class="lede" id="lede"></p>
+  </header>
+
+  <div class="nums" id="nums"></div>
+
+  <section aria-labelledby="act-h">
+    <div class="sh"><h2 id="act-h">Activity</h2><p id="act-sub"></p></div>
+    <div class="heat">
+      <div class="heat-months" id="heat-months"></div>
+      <div class="heat-cells" id="heat"></div>
+      <span class="legend">Less <i style="background:var(--h0)"></i><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i> More</span>
+    </div>
+    <dl class="facts" id="facts"></dl>
+    <details class="more" id="charts-more">
+      <summary>By week, hour and weekday</summary>
+      <div class="inner">
+        <div class="chart"><h3>Commits per week</h3><p class="sub" id="wk-sub"></p><div id="c-week"></div></div>
+        <div class="chart"><h3>Hour of day</h3><p class="sub" id="hr-sub"></p><div id="c-hour"></div></div>
+        <div class="chart"><h3>Day of week</h3><p class="sub" id="dw-sub"></p><div id="c-dow"></div></div>
+      </div>
+    </details>
+  </section>
+
+  <section aria-labelledby="br-h">
+    <div class="sh"><h2 id="br-h">Branches</h2><p>Tap one to see its commits below.</p></div>
+    <div>
+      <div class="blist" id="b-open"></div>
+      <details class="more" id="b-more">
+        <summary><span>Merged into main<span class="c" id="b-count"></span></span></summary>
+        <div class="blist merged" id="b-merged"></div>
+      </details>
+    </div>
+  </section>
+
+  <section aria-labelledby="gr-h" id="graph-sec">
+    <div class="sh"><h2 id="gr-h">Commits</h2><p id="gr-sub"></p></div>
+    <div class="toolbar" id="toolbar" hidden>
+      <label class="search" for="q">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search commits" autocomplete="off">
+      </label>
+      <div class="finfo" id="finfo" hidden><span id="ftext"></span><button class="btn link" id="fclear" type="button">Clear</button></div>
+    </div>
+    <div class="graph-wrap"><div class="graph collapsed" id="graph"></div></div>
+    <button class="btn more-btn" id="expand" type="button"></button>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+const D = JSON.parse(document.getElementById('data').textContent);
+const C = D.commits;
+const byHash = new Map(C.map(c=>[c.h,c]));
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_L=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DOW_L=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const fmt = n => n.toLocaleString('en-US');
+const esc = s => s.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const dayNum = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10))/864e5;
+const dayStr = n => new Date(n*864e5).toISOString().slice(0,10);
+const niceDate = (s, year) => `${+s.slice(8,10)} ${MONTHS[+s.slice(5,7)-1]}${year? ' '+s.slice(0,4):''}`;
+const dowOf = s => (new Date(dayNum(s)*864e5).getUTCDay()+6)%7;
+const laneVar = k => `var(--l${k%5})`;
+const hour12 = h => h===0?'midnight':h<12?h+' am':h===12?'noon':(h-12)+' pm';
+
+/* ---------- Numbers ---------- */
+const perDay = new Map();
+C.forEach(c => { const d=c.d.slice(0,10); perDay.set(d,(perDay.get(d)||0)+1); });
+const days = [...perDay.keys()].sort();
+const first = days[0], last = days[days.length-1];
+const span = dayNum(last)-dayNum(first)+1;
+let streak=1, best=1, bestEnd=days[0], rest=0, restFrom=null, restTo=null;
+for(let i=1;i<days.length;i++){
+  const g = dayNum(days[i])-dayNum(days[i-1]);
+  if(g===1){ streak++; if(streak>best){best=streak;bestEnd=days[i];} } else streak=1;
+  if(g-1>rest){ rest=g-1; restFrom=days[i-1]; restTo=days[i]; }
+}
+const bestStart = dayStr(dayNum(bestEnd)-best+1);
+let busiest = days[0]; days.forEach(d=>{ if(perDay.get(d)>perDay.get(busiest)) busiest=d; });
+const merges = C.filter(c=>c.p.length>1);
+const added = C.reduce((s,c)=>s+c.ad,0), removed = C.reduce((s,c)=>s+c.de,0);
+const months = Math.round(span/30.4);
+
+const branches = D.branches;
+const head = D.latest;
+const headB = branches.find(b=>b.name===head);
+
+document.getElementById('lede').innerHTML =
+  `<b>${fmt(C.length)} commits</b> in ${months} months, ${niceDate(first,1)} to ${niceDate(last,1)}. Latest work is on <span class="pill">${esc(head)}</span>${head==='main'?'.':headB.ahead?`, ${headB.ahead} commit${headB.ahead===1?'':'s'} ahead of main.`:', already in main.'}`;
+
+document.getElementById('nums').innerHTML = [
+  [fmt(C.length),'','Commits'],
+  [days.length,'','Days with commits'],
+  [branches.length,'','Branches'],
+  [best,'days','Longest streak'],
+  [`+${fmt(added)}`,'','Lines of code added','a'],
+  [`−${fmt(removed)}`,'','Lines of code removed','d'],
+].map(([v,u,k,c])=>`<div class="n${c?' wide':''}"><span class="v${c?' '+c:''}">${v}${u?`<small>${u}</small>`:''}</span><span class="k">${k}</span></div>`).join('');
+
+/* ---------- Tooltip ---------- */
+const tip = document.getElementById('tip');
+function showTip(e, html){ tip.innerHTML=html; tip.hidden=false; moveTip(e); }
+function moveTip(e){ const x=Math.min(Math.max(e.clientX,130),innerWidth-130); tip.style.left=x+'px'; tip.style.top=e.clientY+'px'; }
+function hideTip(){ tip.hidden=true; }
+addEventListener('scroll', hideTip, {passive:true});
+
+/* ---------- Heatmap (fits the width) ---------- */
+const start = dayNum(first) - dowOf(first);
+const end = dayNum(last) + (6-dowOf(last));
+const weeks = (end-start+1)/7;
+const level = n => !n?0: n<=2?1: n<=5?2: n<=10?3: 4;
+const heat = document.getElementById('heat');
+heat.style.gridTemplateColumns = `repeat(${weeks},1fr)`;
+let cells='', mh=''; let lastM=-1;
+for(let w=0; w<weeks; w++){
+  for(let d=0; d<7; d++){
+    const n = start + w*7 + d, ds = dayStr(n);
+    if(n<dayNum(first) || n>dayNum(last)){ cells+='<i class="cell out"></i>'; continue; }
+    const v = perDay.get(ds)||0;
+    cells += `<i class="cell" data-l="${level(v)}" data-d="${ds}" data-v="${v}"></i>`;
+  }
+  const mon = dayStr(start+w*7); const m=+mon.slice(5,7);
+  if(+mon.slice(8,10)<=7 && m!==lastM && dayNum(mon)>=dayNum(first)){ mh += `<span style="left:${w/weeks*100}%">${MONTHS[m-1]}</span>`; lastM=m; }
+}
+heat.innerHTML = cells;
+document.getElementById('heat-months').innerHTML = mh;
+heat.addEventListener('pointerover', e=>{ const c=e.target.closest('.cell[data-d]'); if(!c) return;
+  const v=+c.dataset.v; showTip(e, `<b>${v? v+' commit'+(v>1?'s':'') : 'No commits'}</b> · ${DOW[dowOf(c.dataset.d)]} ${niceDate(c.dataset.d,1)}`); });
+heat.addEventListener('pointermove', e=>{ if(!tip.hidden) moveTip(e); });
+heat.addEventListener('pointerout', hideTip);
+
+const hrs = Array(24).fill(0); C.forEach(c=>hrs[+c.d.slice(11,13)]++);
+const peakH = hrs.indexOf(Math.max(...hrs));
+const dw = Array(7).fill(0); C.forEach(c=>dw[dowOf(c.d.slice(0,10))]++);
+const peakD = dw.indexOf(Math.max(...dw));
+document.getElementById('act-sub').textContent = `Each square is a day. Darker means more commits.`;
+document.getElementById('facts').innerHTML = [
+  ['Busiest day', `${perDay.get(busiest)} commits`, niceDate(busiest)],
+  ['Longest break', `${rest} days`, `${niceDate(restFrom)} – ${niceDate(restTo)}`],
+  ['Favourite hour', hour12(peakH), 'IST'],
+  ['Favourite day', DOW_L[peakD], ''],
+].map(([k,v,s])=>`<div><dt>${k}</dt><dd>${v}${s?` <span>${s}</span>`:''}</dd></div>`).join('');
+
+/* ---------- Bar charts (inside the disclosure) ---------- */
+function niceStep(max){ for(const s of [1,2,5,10,20,25,50,100]) if(max/s<=4) return s; return 200; }
+function barPath(x,y,w,h,r){ r=Math.min(r,w/2,h); if(h<=0) return ''; return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`; }
+function barChart(el, data, opts){
+  function draw(){
+    const W = el.clientWidth; if(!W) return;
+    const H = opts.h||150, ml=26, mr=2, mt=8, mb=22, iw=W-ml-mr, ih=H-mt-mb;
+    const max = Math.max(...data.map(d=>d.v)), step=niceStep(max), top=Math.ceil(max/step)*step || 1;
+    const bw = iw/data.length, gap=Math.max(2, Math.min(bw*.3, 8)), w=Math.max(1,bw-gap);
+    let g='';
+    for(let t=0;t<=top;t+=step){ const y=mt+ih-(t/top)*ih; g+=`<g class="grid"><line x1="${ml}" x2="${W-mr}" y1="${y}" y2="${y}"/></g><text x="${ml-8}" y="${y+3.5}" text-anchor="end">${t}</text>`; }
+    let bars='';
+    data.forEach((d,i)=>{
+      const x=ml+i*bw+gap/2, h=(d.v/top)*ih, y=mt+ih-h;
+      bars += `<g class="col" data-i="${i}"><rect class="hit" x="${ml+i*bw}" y="${mt}" width="${bw}" height="${ih}"/><path class="bar${d.v===max?' peak':''}" d="${barPath(x,y,w,h,Math.min(4,w/2))}"/></g>`;
+      if(d.label) bars += `<text x="${opts.anchor==='start'?x:x+w/2}" y="${H-5}" text-anchor="${opts.anchor||'middle'}">${d.label}</text>`;
+    });
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.aria}">${g}<line class="base" x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}"/>${bars}</svg>`;
+  }
+  new ResizeObserver(draw).observe(el);
+  el.addEventListener('pointerover', e=>{ const g=e.target.closest('g.col'); if(g) showTip(e, data[+g.dataset.i].tip); });
+  el.addEventListener('pointermove', e=>{ if(!tip.hidden) moveTip(e); });
+  el.addEventListener('pointerout', e=>{ if(!e.relatedTarget?.closest?.('g.col')) hideTip(); });
+}
+const wk = [];
+for(let w=0; w<weeks; w++){
+  const s0=start+w*7; let v=0;
+  for(let d=0; d<7; d++) v += perDay.get(dayStr(s0+d))||0;
+  wk.push({v, ds:dayStr(s0), label:'', tip:`<b>${v} commit${v===1?'':'s'}</b> · week of ${niceDate(dayStr(s0),1)}`});
+}
+let lm=null, lastLabel=-9; wk.forEach((d,i)=>{ const m=dayStr(start+i*7+6).slice(5,7); if(m!==lm){ lm=m; if(i-lastLabel>=4){ d.label=MONTHS[+m-1]; lastLabel=i; } } });
+barChart(document.getElementById('c-week'), wk, {h:160, aria:'Commits per week', anchor:'start'});
+const peakW = wk.reduce((a,b)=>b.v>a.v?b:a);
+document.getElementById('wk-sub').textContent = `${wk.filter(d=>d.v).length} of ${weeks} weeks had commits. Peak: ${peakW.v}, week of ${niceDate(peakW.ds)}.`;
+barChart(document.getElementById('c-hour'), hrs.map((v,h)=>({v, label:h%6===0?hour12(h).replace(' ',''):'', tip:`<b>${v} commit${v===1?'':'s'}</b> · ${String(h).padStart(2,'0')}:00–${String(h).padStart(2,'0')}:59`})), {aria:'Commits by hour of day'});
+const night = hrs.slice(20).concat(hrs.slice(0,4)).reduce((a,b)=>a+b,0);
+document.getElementById('hr-sub').textContent = `${Math.round(night/C.length*100)}% land between 8 pm and 4 am.`;
+barChart(document.getElementById('c-dow'), dw.map((v,i)=>({v,label:DOW[i][0],tip:`<b>${v} commits</b> on ${DOW_L[i]}s`})), {aria:'Commits by day of week'});
+document.getElementById('dw-sub').textContent = `Weekends hold ${Math.round((dw[5]+dw[6])/C.length*100)}% of commits.`;
+
+/* ---------- Graph layout ---------- */
+let lanes=[]; const rows=[];
+C.forEach(c=>{
+  const before = lanes.slice();
+  let col = lanes.indexOf(c.h);
+  if(col<0){ col = lanes.indexOf(null); if(col<0){ col=lanes.length; lanes.push(null);} }
+  for(let k=0;k<lanes.length;k++) if(lanes[k]===c.h) lanes[k]=null;
+  const fed=[];
+  if(c.p.length){
+    lanes[col]=c.p[0]; fed.push(col);
+    c.p.slice(1).forEach(p=>{ let k=lanes.indexOf(p); if(k<0){ k=lanes.indexOf(null); if(k<0){k=lanes.length; lanes.push(null);} lanes[k]=p; } fed.push(k); });
+  }
+  while(lanes.length && lanes[lanes.length-1]===null) lanes.pop();
+  rows.push({col, before, after:lanes.slice(), fed});
+});
+const ROW=36, MON=48, LW=16, GX=10;
+const X = k => GX + k*LW;
+const maxLanes = Math.max(...rows.map(r=>Math.max(r.after.length, r.before.length, r.col+1)));
+const GW = GX*2 + (maxLanes-1)*LW + 6;
+const colOf = new Map(C.map((c,i)=>[c.h, rows[i].col]));
+const monthCount = {}; C.forEach(c=>{ const m=c.d.slice(0,7); monthCount[m]=(monthCount[m]||0)+1; });
+
+let html='', y=0, pm=null;
+C.forEach((c,i)=>{
+  const m=c.d.slice(0,7);
+  if(m!==pm){ html += `<div class="mrow" style="padding-left:${GW}px"><b>${MONTHS_L[+m.slice(5,7)-1]} ${m.slice(0,4)}</b><span>${monthCount[m]}</span></div>`; y+=MON; pm=m; }
+  rows[i].y = y + ROW/2; y += ROW; rows[i].bottom = y;
+  const refHtml = [...c.r].sort((a,b)=>(b===head)-(a===head)).map(n=>`<span class="ref${n===head?' head':''}">${esc(n)}</span>`).join('');
+  const merge = c.p.length>1, time=c.d.slice(11,16);
+  html += `<div class="crow${merge?' merge':''}" style="padding-left:${GW}px" title="${esc(c.s)}\n${c.h} · ${niceDate(c.d.slice(0,10),1)} ${time} · ${c.f} file${c.f===1?'':'s'}">
+    <span class="h mono">${c.h}</span>
+    <span class="msg"><span class="t">${esc(c.s)}</span>${refHtml}</span>
+    <span class="when${i&&C[i-1].d.slice(0,10)===c.d.slice(0,10)&&m===pm?' same':''}">${niceDate(c.d.slice(0,10))}<span class="tm">${time}</span></span>
+    <span class="diff">${merge?'<span style="color:var(--muted)">merge</span>':`<span class="a">+${fmt(c.ad)}</span> <span class="d">−${fmt(c.de)}</span>`}</span>
+  </div>`;
+});
+const totalH = y;
+const segs = Array.from({length:5},()=>[]);
+function seg(k,x1,y1,x2,y2){ segs[k%5].push(x1===x2?`M${x1},${y1}V${y2}`:`M${x1},${y1}C${x1},${(y1+y2)/2} ${x2},${(y1+y2)/2} ${x2},${y2}`); }
+for(let i=0;i<C.length-1;i++){
+  const r=rows[i], nx=rows[i+1], c=C[i], nh=C[i+1].h;
+  r.after.forEach((hsh,k)=>{
+    if(hsh==null) return;
+    const endX = hsh===nh ? X(nx.col) : X(k);
+    if(r.before[k]!=null && r.before[k]!==c.h && k!==r.col) seg(k, X(k), r.y, endX, nx.y);
+    if(r.fed.includes(k)) seg(k, X(r.col), r.y, endX, nx.y);
+  });
+}
+let svg = `<svg class="lanes" width="${GW}" height="${totalH}" viewBox="0 0 ${GW} ${totalH}" aria-hidden="true">`;
+segs.forEach((arr,k)=>{ if(arr.length) svg += `<path stroke="${laneVar(k)}" d="${arr.join('')}"/>`; });
+C.forEach((c,i)=>{
+  const r=rows[i], x=X(r.col), col=laneVar(r.col);
+  const isHead = c.r.includes(head);
+  let n = isHead ? `<circle cx="${x}" cy="${r.y}" r="8.5" fill="var(--bg)" stroke="var(--gold)" stroke-width="1.5"/>` : '';
+  n += c.p.length>1
+    ? `<circle cx="${x}" cy="${r.y}" r="4.5" fill="var(--bg)" stroke="${col}" stroke-width="2.2"/>`
+    : `<circle cx="${x}" cy="${r.y}" r="${c.r.length?5.5:4.5}" fill="${col}" stroke="var(--bg)" stroke-width="2"/>`;
+  svg += `<g class="node">${n}</g>`;
+});
+svg += '</svg>';
+const graph = document.getElementById('graph');
+graph.innerHTML = svg + html;
+const rowEls = [...graph.querySelectorAll('.crow')];
+const nodeEls = [...graph.querySelectorAll('.node')];
+document.getElementById('gr-sub').innerHTML = `Newest first. ${merges.length} merges; the rest went straight into main.`;
+
+const SHOW = 12;
+let expanded = false;
+const expandBtn = document.getElementById('expand');
+function setExpanded(v){
+  expanded = v;
+  graph.style.height = (v ? totalH : rows[SHOW-1].bottom + 8) + 'px';
+  graph.classList.toggle('collapsed', !v);
+  document.getElementById('toolbar').hidden = !v;
+  expandBtn.textContent = v ? 'Show fewer' : `Show all ${fmt(C.length)} commits`;
+}
+setExpanded(false);
+expandBtn.addEventListener('click', ()=>{
+  const was = expanded; setExpanded(!was);
+  if(was){ clearFilters(); document.getElementById('graph-sec').scrollIntoView({block:'start'}); }
+});
+
+/* ---------- Branches ---------- */
+const openB = branches.filter(b=>b.name===head || b.name==='main' || b.ahead>0)
+  .sort((a,b)=>(a.name===head?0:a.name==='main'?2:1)-(b.name===head?0:b.name==='main'?2:1));
+const mergedB = branches.filter(b=>!openB.includes(b)).sort((a,b)=>b.d.localeCompare(a.d));
+function brow(b){
+  let s;
+  if(b.name===head) s = b.name==='main' ? `live · latest` : `<b>${b.ahead} ahead</b> · latest`;
+  else if(b.name==='main') s = `live · ${niceDate(b.d.slice(0,10))}`;
+  else if(b.ahead>0) s = `<b>${b.ahead} ahead</b> · ${niceDate(b.d.slice(0,10))}`;
+  else s = niceDate(b.d.slice(0,10),1);
+  const dot = colOf.has(b.h) ? laneVar(colOf.get(b.h)) : 'var(--muted)';
+  return `<button class="brow" type="button" data-b="${esc(b.name)}" data-h="${b.h}" aria-pressed="false" title="${b.h} · ${fmt(b.total)} commits"><span class="dot" style="background:${dot}"></span><span class="bn">${esc(b.name)}</span><span class="bs">${s}</span></button>`;
+}
+document.getElementById('b-open').innerHTML = openB.map(brow).join('');
+document.getElementById('b-merged').innerHTML = mergedB.map(brow).join('');
+document.getElementById('b-count').textContent = mergedB.length;
+
+/* ---------- Filtering ---------- */
+let branchSet=null, branchName=null, query='';
+function ancestry(h){ const s=new Set(), st=[h]; while(st.length){ const x=st.pop(); if(s.has(x)) continue; s.add(x); const c=byHash.get(x); if(c) st.push(...c.p);} return s; }
+function apply(){
+  const q = query.trim().toLowerCase(); let shown=0;
+  C.forEach((c,i)=>{
+    const ok = (!branchSet || branchSet.has(c.h)) && (!q || c.s.toLowerCase().includes(q) || c.h.startsWith(q));
+    rowEls[i].classList.toggle('dim', !ok); nodeEls[i].classList.toggle('dim', !ok);
+    if(ok) shown++;
+  });
+  const active = !!(branchSet || q);
+  graph.classList.toggle('filtering', active);
+  document.getElementById('finfo').hidden = !active;
+  document.getElementById('ftext').textContent = active ? `${shown} ${branchName?`in ${branchName}`:'match'}` : '';
+  document.querySelectorAll('.brow').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.b===branchName)));
+}
+function clearFilters(){ branchSet=null; branchName=null; query=''; document.getElementById('q').value=''; apply(); }
+document.querySelectorAll('.blist').forEach(l=>l.addEventListener('click', e=>{
+  const b=e.target.closest('.brow'); if(!b) return;
+  if(branchName===b.dataset.b){ branchSet=null; branchName=null; apply(); return; }
+  branchSet=ancestry(b.dataset.h); branchName=b.dataset.b;
+  if(!expanded) setExpanded(true);
+  apply();
+  const idx = C.findIndex(c=>c.h===b.dataset.h);
+  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const top = graph.getBoundingClientRect().top + scrollY + rows[idx].y - innerHeight/3;
+  scrollTo({top, behavior: smooth?'smooth':'auto'});
+}));
+document.getElementById('q').addEventListener('input', e=>{ query=e.target.value; apply(); });
+document.getElementById('fclear').addEventListener('click', clearFilters);
+
+const authors = [...new Set(C.map(c=>c.a))].map(a=>`“${a}”`);
+document.getElementById('foot').textContent = `Updated ${D.built}, from the branches on GitHub. Authored as ${authors.length>1?authors.slice(0,-1).join(', ')+' and '+authors[authors.length-1]:authors[0]}.`;
+})();
+</script>

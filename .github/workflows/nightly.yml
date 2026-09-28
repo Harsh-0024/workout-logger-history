@@ -1,0 +1,72 @@
+# Nightly Workout Logger history page.
+#
+# This workflow reads every branch of the Workout Logger repository, builds the
+# history page (commits, branches, calendar, streaks and lines of code) and
+# publishes it with GitHub Pages. It lives in its own repository, so it never
+# touches the app repository or its Railway and Render deploys.
+#
+# It runs every night, whenever this repository's main branch is pushed, and on
+# demand from the Actions tab using "Run workflow".
+name: Build History Page
+
+on:
+  schedule:
+    # Run every day at 21:00 UTC, which is 2:30 AM in India.
+    - cron: "0 21 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GitHub Pages needs these to publish. Repositories are only read.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If a push lands while the nightly run is publishing, let the running one finish
+# and publish again afterwards instead of racing it.
+concurrency:
+  group: history-page
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: Build and publish the history page
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      # Step 1: Download this repository, which holds the page template and script.
+      - name: Check out this repository
+        uses: actions/checkout@v4
+
+      # Step 2: Download the Workout Logger repository with its full history and
+      # every branch. It is public, so no token is needed. fetch-depth: 0 is
+      # required; the default shallow clone has only one commit.
+      - name: Check out Workout Logger with full history
+        uses: actions/checkout@v4
+        with:
+          repository: Harsh-0024/workout_logger_
+          path: workout_logger
+          fetch-depth: 0
+
+      # Step 3: Read Workout Logger's history and write _site/index.html.
+      # The script only uses git and Python's standard library.
+      - name: Build the page
+        working-directory: workout_logger
+        run: python3 ../scripts/build_git_history.py ../_site
+
+      # Step 4: Hand the finished page to GitHub Pages and publish it.
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the page
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publish to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
