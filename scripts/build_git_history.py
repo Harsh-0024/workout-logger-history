@@ -8,6 +8,7 @@ Run it from inside a full clone of the Workout Logger repository:
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import re
 import subprocess
 import sys
 
@@ -29,12 +30,12 @@ def read_commits() -> list[dict]:
     out = git(
         "log", "--remotes=origin", "--date-order", "--numstat",
         f"--decorate-refs={REMOTE}", f"--decorate-refs-exclude={REMOTE}HEAD",
-        "--format=\x1e%h\x1f%p\x1f%aI\x1f%an\x1f%s\x1f%D",
+        "--format=\x1e%h\x1f%H\x1f%p\x1f%aI\x1f%an\x1f%s\x1f%D",
     )
     commits = []
     for record in out.split("\x1e")[1:]:
         header, *stat_lines = record.split("\n")
-        short_hash, parents, date, author, subject, refs = header.split("\x1f")
+        short_hash, full_hash, parents, date, author, subject, refs = header.split("\x1f")
         added = removed = files = 0
         for line in stat_lines:
             parts = line.split("\t")
@@ -45,6 +46,7 @@ def read_commits() -> list[dict]:
                     removed += int(parts[1])
         commits.append({
             "h": short_hash,
+            "H": full_hash,
             "p": parents.split(),
             "d": date,
             "a": author,
@@ -81,6 +83,28 @@ def read_branches() -> list[dict]:
     return branches
 
 
+def read_repo_slug() -> str:
+    """Return "owner/repo" from the origin URL, for links to commits on GitHub."""
+    url = git("remote", "get-url", "origin").strip()
+    match = re.search(r"github\.com[:/](.+?)(?:\.git)?/?$", url)
+    return match.group(1) if match else ""
+
+
+# Shown in search results and in link previews on WhatsApp, iMessage, Slack and so on.
+DESCRIPTION = (
+    "Every commit, branch and merge in Workout Logger, with a commit calendar, "
+    "streaks and lines of code. Rebuilt every night."
+)
+# The tab icon: a gold ring around a gold dot, drawn inline so no image file is needed.
+FAVICON = (
+    "data:image/svg+xml,"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E"
+    "%3Crect width='32' height='32' rx='8' fill='%23111316'/%3E"
+    "%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23E2B74D' stroke-width='2.5'/%3E"
+    "%3Ccircle cx='16' cy='16' r='4.5' fill='%23E2B74D'/%3E%3C/svg%3E"
+)
+
+
 def main() -> None:
     out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "_site")
     commits = read_commits()
@@ -88,13 +112,21 @@ def main() -> None:
     if not commits or not branches:
         sys.exit("No commits or branches found. Was the repository checked out with full history?")
 
-    built = datetime.now(timezone.utc).strftime("%-d %b %Y, %H:%M UTC")
+    now = datetime.now(timezone.utc)
+    # "Today" is counted in the author's own timezone, taken from the newest
+    # commit, so the current streak and the "Today" label match their calendar.
+    local_now = now.astimezone(datetime.fromisoformat(commits[0]["d"]).tzinfo)
+    zone = {"UTC+05:30": "IST"}.get(local_now.tzname(), local_now.tzname())
+    built = local_now.strftime(f"%-d %b %Y, %H:%M {zone}")
     data = {
         "commits": commits,
         "branches": branches,
         # Branches are sorted newest first, so this is where the latest work is.
         "latest": branches[0]["name"],
         "built": built,
+        "builtIso": now.isoformat(),
+        "today": local_now.date().isoformat(),
+        "repo": read_repo_slug(),
     }
     # "</" is escaped so a commit message can never close the <script> tag early.
     payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
@@ -106,6 +138,13 @@ def main() -> None:
         '<!doctype html>\n<html lang="en">\n<head>\n'
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+        f'<meta name="description" content="{DESCRIPTION}">\n'
+        '<meta property="og:title" content="Workout Logger History">\n'
+        f'<meta property="og:description" content="{DESCRIPTION}">\n'
+        '<meta property="og:type" content="website">\n'
+        '<meta name="theme-color" content="#F3F4F1" media="(prefers-color-scheme: light)">\n'
+        '<meta name="theme-color" content="#111316" media="(prefers-color-scheme: dark)">\n'
+        f'<link rel="icon" href="{FAVICON}">\n'
         f"{head}<style>body{{margin:0}}</style>\n</head>\n<body>\n"
         f'<div class="wrap">{body}\n</body>\n</html>\n'
     )
