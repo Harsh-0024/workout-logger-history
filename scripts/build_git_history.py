@@ -5,6 +5,7 @@ Run it from inside a full clone of the Workout Logger repository:
     python3 path/to/build_git_history.py OUTPUT_DIR
 """
 
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 import json
@@ -112,10 +113,18 @@ def main() -> None:
     if not commits or not branches:
         sys.exit("No commits or branches found. Was the repository checked out with full history?")
 
+    # Show every time in the owner's timezone: the one most commits were made in.
+    # Commits from cloud sessions are recorded in UTC, and without this they
+    # would show UTC clock times as if they were local, hours off.
+    home_tz = Counter(datetime.fromisoformat(c["d"]).utcoffset() for c in commits).most_common(1)[0][0]
+    home_tz = timezone(home_tz)
+    for item in commits + branches:
+        item["d"] = datetime.fromisoformat(item["d"]).astimezone(home_tz).isoformat()
+
     now = datetime.now(timezone.utc)
-    # "Today" is counted in the author's own timezone, taken from the newest
-    # commit, so the current streak and the "Today" label match their calendar.
-    local_now = now.astimezone(datetime.fromisoformat(commits[0]["d"]).tzinfo)
+    # "Today" is counted in the same timezone, so the current streak and the
+    # "Today" label match the owner's calendar.
+    local_now = now.astimezone(home_tz)
     zone = {"UTC+05:30": "IST"}.get(local_now.tzname(), local_now.tzname())
     built = local_now.strftime(f"%-d %b %Y, %H:%M {zone}")
     data = {
@@ -126,6 +135,7 @@ def main() -> None:
         "built": built,
         "builtIso": now.isoformat(),
         "today": local_now.date().isoformat(),
+        "zone": zone,
         "repo": read_repo_slug(),
     }
     # "</" is escaped so a commit message can never close the <script> tag early.

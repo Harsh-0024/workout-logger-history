@@ -431,7 +431,7 @@ $('act-sub').textContent = `${days.length} of the last ${span} days had commits.
 $('facts').innerHTML = [
   ['Busiest day', plural(perDay.get(busiest),'commit'), niceDate(busiest)],
   ['Longest break', plural(rest,'day'), `${niceDate(restFrom)} – ${niceDate(restTo)}`],
-  ['Favourite hour', hour12(peakH), 'IST'],
+  ['Favourite hour', hour12(peakH), D.zone],
   ['Favourite day', DOW_L[peakD], ''],
 ].map(([k,v,s])=>`<div><dt>${k}</dt><dd>${v}${s?` <span>${s}</span>`:''}</dd></div>`).join('');
 
@@ -476,7 +476,11 @@ barChart($('c-dow'), dw.map((v,i)=>({v,label:DOW[i][0],tip:`<b>${plural(v,'commi
 $('dw-sub').textContent = `Weekends hold ${Math.round((dw[5]+dw[6])/C.length*100)}% of commits.`;
 
 /* ---------- Graph layout ---------- */
-let lanes=[]; const rows=[];
+// Lane 0 is kept for main, so main is always the gold line on the left and other
+// branches fork off to the right. Nothing is drawn in it until main's history starts.
+const mainTip = branches.find(b=>b.name==='main')?.h;
+let lanes = idxOf.has(mainTip) ? [mainTip] : []; const rows=[];
+let idle0 = lanes.length>0;
 C.forEach(c=>{
   const before = lanes.slice();
   let col = lanes.indexOf(c.h);
@@ -488,7 +492,8 @@ C.forEach(c=>{
     c.p.slice(1).forEach(p=>{ let k=lanes.indexOf(p); if(k<0){ k=lanes.indexOf(null); if(k<0){k=lanes.length; lanes.push(null);} lanes[k]=p; } fed.push(k); });
   }
   while(lanes.length && lanes[lanes.length-1]===null) lanes.pop();
-  rows.push({col, before, after:lanes.slice(), fed});
+  if(col===0 || fed.includes(0)) idle0 = false;
+  rows.push({col, before, after:lanes.slice(), fed, idle0});
 });
 const ROW=36, MON=48, LW=16, GX=10;
 const X = k => GX + k*LW;
@@ -518,7 +523,7 @@ function seg(k,x1,y1,x2,y2){ segs[k%5].push(x1===x2?`M${x1},${y1}V${y2}`:`M${x1}
 for(let i=0;i<C.length-1;i++){
   const r=rows[i], nx=rows[i+1], c=C[i], nh=C[i+1].h;
   r.after.forEach((hsh,k)=>{
-    if(hsh==null) return;
+    if(hsh==null || (k===0 && r.idle0)) return;
     const endX = hsh===nh ? X(nx.col) : X(k);
     if(r.before[k]!=null && r.before[k]!==c.h && k!==r.col) seg(k, X(k), r.y, endX, nx.y);
     if(r.fed.includes(k)) seg(k, X(r.col), r.y, endX, nx.y);
@@ -639,7 +644,7 @@ document.querySelectorAll('.blist').forEach(l=>l.addEventListener('click', e=>{
 /* ---------- Commit detail sheet ---------- */
 const sheet = $('sheet'), scrim = $('scrim');
 let cur = -1, opener = null;
-function fullDate(c){ const ds=c.d.slice(0,10); return `${DOW_L[dowOf(ds)]}, ${niceDate(ds,1)} · ${c.d.slice(11,16)} IST`; }
+function fullDate(c){ const ds=c.d.slice(0,10); return `${DOW_L[dowOf(ds)]}, ${niceDate(ds,1)} · ${c.d.slice(11,16)} ${D.zone}`; }
 function blocks(c){
   const t=c.ad+c.de; if(!t) return '';
   let a = Math.round(c.ad/t*5); if(c.ad && !a) a=1; if(c.de && a===5) a=4;
